@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            height: fit-content;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h2 {
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .canvas-wrapper {
+            width: 100%;
+            aspect-ratio: 1;
+            max-height: 60vh;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            touch-action: none;
+        }
+
+        .info {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .component {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            flex-wrap: wrap;
+        }
+
+        .formula {
+            color: #666;
+            font-style: italic;
+            margin-left: 10px;
+        }
+
+        /* Media queries for different screen sizes */
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+                min-height: 98vh;
+            }
+
+            .canvas-wrapper {
+                max-height: none;
+            }
+
+            .info {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+
+            .component {
+                margin: 5px 0;
+            }
+
+            h2 {
+                font-size: 1.3em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Force Vector Components</h2>
+        <div class="canvas-wrapper">
+            <canvas id="vectorCanvas" width="400" height="400"></canvas>
+        </div>
+        <div class="info">
+            <div class="component">
+                <p>Magnitude (F): <span id="magnitude">0</span> units</p>
+            </div>
+            <div class="component">
+                <p>Angle (θ): <span id="angle">0</span>°</p>
+            </div>
+            <div class="component">
+                <p>Horizontal Component (Fx): <span id="horizontalComponent">0</span> units</p>
+                <span class="formula">Fx = F·cos(θ)</span>
+            </div>
+            <div class="component">
+                <p>Vertical Component (Fy): <span id="verticalComponent">0</span> units</p>
+                <span class="formula">Fy = F·sin(θ)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('vectorCanvas');
+        const ctx = canvas.getContext('2d');
+        let origin, mousePos;
+        const GRID_SQUARES = 10; // Number of grid squares in each direction
+        let unitScale; // Units per pixel
+
+        function resizeCanvas() {
+            const wrapper = canvas.parentElement;
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight;
+            origin = { x: canvas.width/2, y: canvas.height/2 };
+            mousePos = { x: origin.x + canvas.width/4, y: origin.y - canvas.height/4 };
+            unitScale = GRID_SQUARES / Math.min(canvas.width, canvas.height);
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawGrid() {
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            
+            const gridSpacing = Math.min(canvas.width, canvas.height) / GRID_SQUARES;
+            
+            // Draw vertical lines
+            for(let x = 0; x <= canvas.width; x += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Draw horizontal lines
+            for(let y = 0; y <= canvas.height; y += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawAxes() {
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(0, origin.y);
+            ctx.lineTo(canvas.width, origin.y);
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(origin.x, 0);
+            ctx.lineTo(origin.x, canvas.height);
+            ctx.stroke();
+
+            // Add axis labels
+            ctx.fillStyle = '#666';
+            ctx.font = `${canvas.width/30}px sans-serif`;
+            ctx.fillText('x', canvas.width - 20, origin.y - 10);
+            ctx.fillText('y', origin.x + 10, 20);
+
+            // Add grid numbers
+            const gridSpacing = Math.min(canvas.width, canvas.height) / GRID_SQUARES;
+            ctx.font = `${canvas.width/40}px sans-serif`;
+            
+            // X-axis numbers
+            for(let i = 1; i <= GRID_SQUARES/2; i++) {
+                const x = origin.x + i * gridSpacing;
+                const label = i.toString();
+                ctx.fillText(label, x - 5, origin.y + 20);
+                ctx.fillText(-i.toString(), origin.x - i * gridSpacing - 5, origin.y + 20);
+            }
+            
+            // Y-axis numbers
+            for(let i = 1; i <= GRID_SQUARES/2; i++) {
+                const y = origin.y - i * gridSpacing;
+                const label = i.toString();
+                ctx.fillText(label, origin.x - 20, y + 5);
+                ctx.fillText(-i.toString(), origin.x - 20, origin.y + i * gridSpacing + 5);
+            }
+        }
+
+        function drawArrow(fromX, fromY, toX, toY, color) {
+            const headLength = canvas.width/40;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI/6),
+                      toY - headLength * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI/6),
+                      toY - headLength * Math.sin(angle + Math.PI/6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawAngleArc() {
+            const dx = mousePos.x - origin.x;
+            const dy = origin.y - mousePos.y;
+            const angle = Math.atan2(dy, dx);
+            const radius = canvas.width/13;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#9C27B0';
+            ctx.lineWidth = 2;
+            ctx.arc(origin.x, origin.y, radius, 0, -angle, angle > 0);
+            ctx.stroke();
+
+            ctx.fillStyle = '#9C27B0';
+            ctx.font = `${canvas.width/25}px serif`;
+            const labelRadius = radius + 10;
+            const labelAngle = -angle / 2;
+            ctx.fillText('θ', 
+                origin.x + labelRadius * Math.cos(labelAngle),
+                origin.y - labelRadius * Math.sin(labelAngle));
+        }
+
+        function updateComponents() {
+            const dx = mousePos.x - origin.x;
+            const dy = origin.y - mousePos.y;
+            
+            // Convert to grid units
+            const dxUnits = dx * unitScale;
+            const dyUnits = dy * unitScale;
+            
+            const magnitude = Math.sqrt(dxUnits * dxUnits + dyUnits * dyUnits);
+            const angle = Math.atan2(dyUnits, dxUnits) * 180 / Math.PI;
+            
+            document.getElementById('magnitude').textContent = magnitude.toFixed(1);
+            document.getElementById('angle').textContent = angle.toFixed(1);
+            document.getElementById('horizontalComponent').textContent = dxUnits.toFixed(1);
+            document.getElementById('verticalComponent').textContent = dyUnits.toFixed(1);
+            
+            return { dx, dy };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawGrid();
+            drawAxes();
+            
+            const components = updateComponents();
+            
+            drawArrow(origin.x, origin.y, origin.x + components.dx, origin.y, '#2196F3');
+            drawArrow(origin.x + components.dx, origin.y, mousePos.x, mousePos.y, '#4CAF50');
+            drawArrow(origin.x, origin.y, mousePos.x, mousePos.y, '#F44336');
+            drawAngleArc();
+
+            ctx.font = `${canvas.width/30}px sans-serif`;
+            
+            ctx.fillStyle = '#F44336';
+            ctx.fillText('F', 
+                origin.x + (mousePos.x - origin.x) * 0.5 + 10,
+                origin.y + (mousePos.y - origin.y) * 0.5);
+            
+            ctx.fillStyle = '#2196F3';
+            ctx.fillText('Fx', origin.x + components.dx/2, origin.y + 20);
+            
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillText('Fy', origin.x + components.dx + 10, 
+                origin.y + (mousePos.y - origin.y)/2);
+        }
+
+        function handleMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            if (e.type === 'touchmove') {
+                e.preventDefault();
+                mousePos.x = (e.touches[0].clientX - rect.left) * scaleX;
+                mousePos.y = (e.touches[0].clientY - rect.top) * scaleY;
+            } else {
+                mousePos.x = (e.clientX - rect.left) * scaleX;
+                mousePos.y = (e.clientY - rect.top) * scaleY;
+            }
+            
+            draw();
+        }
+
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('touchmove', handleMove, { passive: false });
+    </script>
+</body>
+</html>
